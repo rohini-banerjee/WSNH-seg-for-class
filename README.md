@@ -16,6 +16,9 @@ _Uncertainty-Driven Segmentation for Skin Lesion Classification_
 
 for Seborrheic Keratosis (SK) and melanoma (M) classification.
 
+![Results1](assets/gradCAM_results "Example GradCAM saliency map")
+*Example GradCAM saliency maps from each member of expert ensemble on corresponding input images.*
+
 ## 🛠️ Usage
 *NOTE:* This repository is currently under development and will be refactored
 for deployment soon.
@@ -35,7 +38,7 @@ This repository is under a **restrictive license** to protect the intellectual p
 
 ## 📩 Authors and Contact
 
-- **Rohini Banerjee**  (@rohini-banerjee)
+- **Rohini Banerjee**  [@rohini-banerjee](https://github.com/rohini-banerjee)
 For inquiries, permission requests, or collaboration opportunities, please contact rohinib@andrew.cmu.edu.
 
 ---
