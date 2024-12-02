@@ -34,7 +34,7 @@ def data_loader_for_bn_update(b_x, b_y, B):
     """
     dataset = TensorDataset(b_x, b_y)
     return DataLoader(dataset, batch_size=B, shuffle=False)
-    
+
 def sort_by_diagnosis(dir_name, lookup_filename, phase="train"):
     """
     Given a directory of all images for a certain phase, re-organize
@@ -176,7 +176,7 @@ def collect_data(type='train', bootstrapped=False, seed=42):
     images, labels = None, None
 
     # Check if valid data type is provided
-    valid_data_types = ['train', 'vc-train', 'val', 'val1', 'val2', 'aug-val2', 'test']
+    valid_data_types = ['train', 'val', 'val1', 'val2', 'aug-val2', 'test']
     if type not in valid_data_types:
         raise ValueError(f"Data type {type} invalid. Valid options include {', '.join(valid_data_types)}.")
 
