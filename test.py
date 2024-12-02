@@ -10,7 +10,7 @@ import plotting
 import torch
 import utils
 
-from classifiers import ModXception
+from classifiers import *
 from metrics import compute_metrics
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -19,20 +19,27 @@ from segmenter import UNetSegmenter
 from torch.nn import functional as F
 from tqdm import tqdm
 
-def classification_inference():
-    return
-    ####################################################################################
-
-    # extract_grad_cam_repr(
-    #     test_loaders=[test_loader0, test_loader1, test_loader2, test_loader3],
-    #     model_names = ['v-cls', 'roi-cls', 'roi-uq-cls', 'kl-uq-cls', 'ks-uq-cls'],
-    #     ensemble=ensemble,
-    #     v_test_loader=test_loader,
-    #     model=trained_model,
-    #     device=device,
-    # )
 
 def visualize_grad_cam(model, inp, target_layers, target):
+    """
+    Overlay gradCAM saliency map on target over input image.
+
+    Args:
+        model (torch.nn.Module): Trained classifier.
+
+        inp (torch.Tensor): Input image as preprocessed tensor.
+
+        target_layers (List[torch.nn.Module]): List of target layers
+        for gradient computation.
+
+        target (List[int]): List of target classes for GradCAM maps.
+
+    Returns:
+        plot_img (np.ndarray): Input image in RGB color space.
+
+        visualization (np.ndarray): GradCAM saliency map overlaid
+        over plot_img.
+    """
     with GradCAM(model=model, target_layers=target_layers) as cam:
         grayscale_cam = cam(input_tensor=inp, targets=target, aug_smooth=True)
         grayscale_cam = grayscale_cam[0]
@@ -40,16 +47,32 @@ def visualize_grad_cam(model, inp, target_layers, target):
         visualization = show_cam_on_image(np.clip(plot_img, 0, 1), grayscale_cam, use_rgb=True)
     return plot_img, visualization
 
-def extract_grad_cam_repr(test_loaders, model_names, all_models, v_test_loader, model, device, plot_idx=0):
-    # Set model to eval mode
-    model.eval()
+def extract_grad_cam_repr(test_loaders, all_models, device, save_path, plot_idx=0):
+    """
+    Visualize GradCAM saliency map on specified test image.
 
+    Args:
+        test_loaders (List[torch.utils.data.dataloader.DataLoader]): List
+        of dataloaders for classifiers.
+
+        all_models (List[torch.nn.Module]): List of trained classifiers.
+
+        device (torch.device): Selected device.
+
+        save_path (str): List to save GradCAM visualization plot.
+
+        plot_idx (int): Index of image to visualize.
+    
+    Returns:
+        None.
+    """
     all_results = []
+    plot_img_name = None
     for i, test_loader in enumerate(test_loaders):
         # Choose appropriate target layers for GradCAM. For example, we select the
         # last convolution layer for the Xception architecture.
         target_layers = [all_models[i].model.conv4]
-        for (b_x, b_y, id) in test_loader:
+        for idx, (b_x, b_y, id) in enumerate(test_loader):
             # Move to device
             b_x = b_x.type(torch.FloatTensor).to(device)
             b_y = b_y.round().type(torch.LongTensor).to(device)
@@ -58,21 +81,44 @@ def extract_grad_cam_repr(test_loaders, model_names, all_models, v_test_loader, 
             # Otherwise, will produce map for specified class(es).
             target = [ClassifierOutputTarget(b_y.item())]
             plot_img, gradcam_result = visualize_grad_cam(all_models[i], b_x, target_layers, target)
-            all_results.append((plot_img, gradcam_result))
+            if idx == plot_idx:
+                plot_img_name = id[0]
+                all_results.append((plot_img, gradcam_result))
 
             # Forward pass
             b_y_logits = all_models[i](b_x)
             b_y_hat = F.softmax(b_y_logits, dim=-1)
             b_y_pred = torch.argmax(b_y_hat, dim=-1)
+        
+    plotting.plot_gradCAM_results(plot_img_name, all_results, save_path)
     
-
 def evaluate_single_classifier(test_loader, model, model_type, device, save_results, \
     roc_results_file, model_results_file):
-    # Set model to eval mode
-    model.eval()
+    """
+    Evaluate single classifier.
+
+    Args:
+        test_loader (torch.utils.data.dataloader.DataLoader): Testing dataloader.
+
+        model (torch.nn.Module): Trained classifier.
+
+        model_type (str): Model type.
+
+        device (torch.device): Selected device.
+
+        save_results (bool): Whether to save evaluation metrics.
+
+        roc_results_file (str): Pathname to store results for ROC curves (.txt).
+
+        model_results_file (str): Pathname to store evaluation results (.json).
+    
+    Returns:
+        None.
+    """
+    # Create empty dictionary to store results
+    metric_dict = dict()
 
     # Perform single pass of the dataset
-    metric_dict = dict()
     y_probs, targets, pes = [], [], []
     with tqdm(test_loader, desc='Testing', ascii=' >=') as pbar:
         with torch.no_grad():
@@ -94,7 +140,7 @@ def evaluate_single_classifier(test_loader, model, model_type, device, save_resu
                 pbar.set_postfix()
                 pbar.update()
 
-    # Format prediction results for evaluation purposes
+    # Format prediction results for evaluation
     y_probs = torch.cat(y_probs, dim=0)
     y_preds = torch.argmax(y_probs, dim=1)
     targets = torch.cat(targets, dim=0)
@@ -103,10 +149,34 @@ def evaluate_single_classifier(test_loader, model, model_type, device, save_resu
     # Compute evaluation metrics
     compute_metrics(metric_dict, model_type, y_probs, y_preds, pes, targets, save_results, roc_results_file, model_results_file)
 
-def evaluate_independent_ensemble(test_loaders, ensemble, device, save_results \
+def evaluate_independent_ensemble(test_loaders, ensemble, device, save_results, \
     roc_results_file, model_results_file):
+    """
+    Evaluate expert ensemble.
+
+    Args:
+        test_loaders (List[torch.utils.data.dataloader.DataLoader]): List of
+        dataloaders for ensemble members.
+
+        ensemble (List[torch.nn.Module]): List of classifiers.
+
+        model_type (str): Model type.
+
+        device (torch.device): Selected device.
+
+        save_results (bool): Whether to save evaluation metrics.
+
+        roc_results_file (str): Pathname to store results for ROC curves (.txt).
+
+        model_results_file (str): Pathname to store evaluation results (.json).
+    
+    Returns:
+        None.
+    """
+    # Create empty dictionary to store results
     metric_dict = dict()
 
+    # Iterate through each model's respective dataloader
     ensemble_probs, all_logits = [], []
     for i, test_loader in enumerate(test_loaders):
         y_logits, pes, y_probs, targets = [], [], [], []
@@ -142,7 +212,7 @@ def evaluate_independent_ensemble(test_loaders, ensemble, device, save_results \
         all_logits.append(y_logits.unsqueeze(dim=0))
         ensemble_probs.append(y_probs)
 
-    # Aggregate all model predictions together and format results for evaluation purposes
+    # Aggregate all model predictions together and format results for evaluation
     aggregated_probs = torch.stack(ensemble_probs).mean(dim=0)
     aggregated_preds = torch.argmax(aggregated_probs, dim=1)
     all_logits = torch.cat(all_logits, dim=0)
@@ -192,10 +262,9 @@ def main(args):
         device=device,
     )
 
-    # Replace 'saved_pathname' with trained classifier pathname
+    # Modify 'model_save_path' in commandline with trained classifier pathname
     trained_model = ModXception('legacy_xception', True).to(device)
-    saved_pathname = utils.WEIGHTS_DIR + 'ES25_baseline_xception_model.pth'
-    trained_model = utils.load_model(trained_model, saved_pathname, device)
+    utils.load_model(trained_model, args.model_save_path, device)
 
     # Test classification model
     evaluate_single_classifier(
@@ -218,17 +287,29 @@ def main(args):
         model_results_file=utils.RESULTS_DIR+'ind-ensemble_metrics.json',
     )
 
+    # To properly run gradCAM, modify forward pass of GenericClassifier module to
+    # only output logits.
+    # extract_grad_cam_repr(
+    #     test_loaders=([test_loader]+loaders),
+    #     all_models=([trained_model]+ensemble),
+    #     device=device,
+    #     save_path=(utils.PLOTS_DIR+f'ex_gradCAM.png'),
+    #     plot_idx=3,
+    # )
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parameters for inference.')
+
+    parser.add_argument('model_type', type=str, help='Model type.')
+    parser.add_argument('model_save_path', type=str, help='Path to trained model weights.')
 
     # Image parameters
     parser.add_argument('--image_size', type=int, default=utils.CLS_SIZE[0], help='The size of the input image.')
     parser.add_argument('--channels', type=int, default=3, help='The number of channels of the input image.')
 
     # Inference parameters
-    parser.add_argument('--batch_size', type=int, default=8, help='Batch size.')
-    parser.add_argument('--model_type', type=str, default='v-cls', help='Model type.')
+    parser.add_argument('--batch_size', type=int, default=1, help='Batch size.')
     parser.add_argument('--save_results', type=int, default=0, help='Bool saving evaluation results.')
 
     # System parameters

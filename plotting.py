@@ -26,6 +26,9 @@ from sklearn.calibration import calibration_curve
 
 
 def plot_augmentations(id, img_path, mask_path, save_path=None):
+    """
+    Plot generated image augmentations.
+    """
     fig, axes = plt.subplots(1, len(utils.AUGMENTORS)+1)
     plt.subplots_adjust(wspace=0.0)
 
@@ -41,10 +44,14 @@ def plot_augmentations(id, img_path, mask_path, save_path=None):
         axes[j+1].axis("off")
     
     if save_path is None:
-        save_path = f'{id}_data_augmentations.png'
+        save_path = utils.PLOTS_DIR + f'{id}_data_augmentations.png'
     plt.savefig(save_path, bbox_inches='tight', dpi=300)
 
 def plot_prediction(id, image, gt, p_map, eu_map, au_map, save_path=None):
+    """
+    Plot input image, ground truth mask, predicted mask, as well as epistemic
+    and aleatoric uncertainty maps.
+    """
     fig, axes = plt.subplots(1, 5, figsize=(14,4), sharey=True)
 
     # Input image
@@ -82,10 +89,13 @@ def plot_prediction(id, image, gt, p_map, eu_map, au_map, save_path=None):
     plt.tight_layout()
 
     if save_path is None:
-        save_path = f'{id}_segmentation_result.png'
+        save_path = utils.PLOTS_DIR + f'{id}_segmentation_result.png'
     plt.savefig(save_path, bbox_inches='tight', dpi=300)
 
 def plot_loaded_classif_data(id, resized_img, resized_roi, resized_eu, resized_ks, resized_kl, save_path=None):
+    """
+    Plot example inputs for each member of the expert ensemble.
+    """
     fig, ax = plt.subplots(1, 5)
     plt.subplots_adjust(wspace=0.02)
 
@@ -104,5 +114,32 @@ def plot_loaded_classif_data(id, resized_img, resized_roi, resized_eu, resized_k
         a.axis("off")
 
     if save_path is None:
-        save_path = f'{id}_uq-enhanced.png'
+        save_path = utils.PLOTS_DIR + f'{id}_uq-enhanced.png'
     plt.savefig(save_path, bbox_inches='tight', dpi=300)
+
+def plot_gradCAM_results(id, all_results, save_path=None):
+    """
+    Plot GradCAM visualization.
+    """
+    fig, ax = plt.subplots(2, len(all_results), figsize=(10, 4))
+    plt.subplots_adjust(wspace=0.06, hspace=0.02)
+    
+    plot_titles = ['Baseline', 'ROI', r'ROI+$\mathcal{U}_{ES}$', r'$\mathcal{K}^*_L$+$\mathcal{U}_{ES}$', r'$\mathcal{K}^*_S$+$\mathcal{U}_{ES}$']
+
+    for i, (plot_img, saliency_map) in enumerate(all_results):
+        if i == 0:
+            ax[0, i].imshow(utils.get_rgb(plot_img))
+        else:
+            ax[0, i].imshow(plot_img)
+        ax[1, i].imshow(saliency_map)
+        ax[0, i].axis('off')
+        ax[1, i].axis('off')
+        ax[0, i].set_title(plot_titles[i],fontsize=15)
+  
+    ax[0, 0].text(-42, plot_img.shape[0]/2, 'Input Image', fontsize=14, rotation=90, va='center')
+    ax[1, 0].text(-42, saliency_map.shape[0]/2, 'GradCAM Map', fontsize=14, rotation=90, va='center')
+
+    if save_path is None:
+        save_path = utils.PLOTS_DIR + f'{id}_gradCAM_vis.png'
+    plt.savefig(save_path, bbox_inches='tight', dpi=300)
+    

@@ -289,13 +289,17 @@ def load_tensor(img, device):
     return img.unsqueeze(0).type(torch.FloatTensor).to(device)
 
 def load_model(model, model_path, device):
+    """
+    Load model to specified device.
+    """
     try:
         # Assume we are loading model onto same device it was trained using
         model.load_state_dict(torch.load(model_path, weights_only=True))
     except:
         # If not, force load onto available device
         model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
-    return model
+    # Set model to eval mode
+    model.eval()
 
 def load_ensemble(device):
     """
@@ -305,7 +309,6 @@ def load_ensemble(device):
     for i in range(len(UNET_MODEL_PATHS)):
         mod = UNetSegmenter().to(device)
         load_model(mod, UNET_MODEL_PATHS[i], device)
-        mod.eval()
         ensemble.append(mod)
     return ensemble
 
@@ -317,7 +320,6 @@ def load_cohort(device):
     for i in range(len(CLASSIF_PATHS)):
         trained_model = classifiers.ModXception('legacy_xception', True).to(device)
         load_model(trained_model, CLASSIF_PATHS[i], device)
-        trained_model.eval()
         cohort.append(trained_model)
     return cohort
 

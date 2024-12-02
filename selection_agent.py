@@ -14,7 +14,6 @@ import plotting
 import torch
 import utils
 
-# from segmenter import UNetSegmenter
 
 class SelectionAgent:
     """
@@ -188,13 +187,13 @@ class SelectionAgent:
         if (y + h//2 + d//2) > img.shape[0]:
             b = abs(y + h//2 - d//2)
 
+        # Add visualization of MBS
+        cv2.rectangle(contours_p_map, (new_x, new_y), (new_x + d, new_y + d), (0, 255, 0), 2)
+
         padded_img = self._add_zero_padding(img, t, b, l, r)
         padded_p_map = self._add_zero_padding(p_map, t, b, l, r)
         padded_eu_map = self._add_zero_padding(eu_map, t, b, l, r)
         padded_au_map = self._add_zero_padding(au_map, t, b, l, r)
-
-        # Add visualization of MBS
-        cv2.rectangle(contours_p_map, (new_x, new_y), (new_x + d, new_y + d), (0, 255, 0), 2)
 
         # Crop around lesion
         cropped_padded_img = self._crop_mbs(padded_img, new_x, new_y, d)
@@ -438,7 +437,7 @@ def main(args):
     au_map = utils.clean_tensor(aleatoric)
 
     # Plot image, gt, predictions, and uncertainty maps together
-    plotting.plot_prediction(image_id, utils.get_rgb(img), mask, p_map, eu_map, au_map, save_path=f'plots/ex_segmentation_result.png')
+    plotting.plot_prediction(image_id, utils.get_rgb(img), mask, p_map, eu_map, au_map, save_path=(utils.PLOTS_DIR+f'ex_segmentation_result.png'))
 
     roi_img, eu_img, best_ks_kernel, best_kl_kernel = ScA.run_pipeline(img, p_map, eu_map, au_map)
     resized_img = utils.get_rgb(utils.resize_img(img))
@@ -448,7 +447,7 @@ def main(args):
     resized_kl = utils.resize_img(best_kl_kernel)
     
     # Plot UQ-enhanced images
-    plotting.plot_loaded_classif_data(image_id, resized_img, resized_roi, resized_eu, resized_ks, resized_kl, save_path=f'plots/ex_uq-enhanced-data.png')
+    plotting.plot_loaded_classif_data(image_id, resized_img, resized_roi, resized_eu, resized_ks, resized_kl, save_path=(utils.PLOTS_DIR+f'ex_uq-enhanced-data.png'))
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 # -----------------------------------------------------------------------------
 # Loading, preprocesssing, and augmentation of relevant datasets.
+# NOTE: You must have datasets stored as described in `collect_data` method.
 # -----------------------------------------------------------------------------
 import cv2
 import glob
@@ -26,11 +27,30 @@ from torch.utils.data import Dataset as BaseDataset
 from torchvision import transforms
 
 
+def data_loader_for_bn_update(b_x, b_y, B):
+    """
+    Construct mini-batch dataloaders to update batch norm statistics
+    for SWA models.
+    """
+    dataset = TensorDataset(b_x, b_y)
+    return DataLoader(dataset, batch_size=B, shuffle=False)
+    
 def sort_by_diagnosis(dir_name, lookup_filename, phase="train"):
     """
     Given a directory of all images for a certain phase, re-organize
     images in sub-directories by diagnosis. Parent directory must
     be named 'images' for consistency.
+
+    Args:
+        dir_name (str): Directory containing images for specified phase.
+
+        lookup_filename (str): Pathname to dictionary mapping image IDs
+        to corresponding gold standard lesion diagnoses.
+
+        phase (str): Specified phase.
+
+    Returns:
+        None.
     """
     lookup_dict = generate_lookup_dict(lookup_filename)
 
@@ -74,6 +94,18 @@ def boostrap_sample(images, labels, seed=10):
     """
     Naive Efron-type bootstrap. Random selection with replacement
     to generate bootstrapped sample of size n from data set of size n.
+
+    Args:
+        images (List[np.ndarray]): List of images.
+
+        labels (List[np.ndarray]): List of segmentation masks.
+
+        seed (int): Seed for reproducibility.
+    
+    Returns:
+        new_imgs (List[np.ndarray]): Bootstrapped images.
+
+        new_labs (List[np.ndarray]): Bootstrapped segmentation masks.
     """
     print(f'Seed {seed}.')
     random.seed(seed)
@@ -89,6 +121,16 @@ def boostrap_sample(images, labels, seed=10):
 def sorted_data(dir_path, is_gt=False):
     """
     Get paths to sorted images.
+
+    Args:
+        dir_path (str): Directory containing input objects.
+
+        is_gt (bool): Whether directory contains ground truth
+        masks/labels.
+    
+    Returns:
+        sortedPatients (List[pathlib.PosixPath]): List of Posix
+        pathnames to sorted objects.
     """
     p = Path(dir_path)
     lstOfPatients = []
@@ -118,6 +160,18 @@ def collect_data(type='train', bootstrapped=False, seed=42):
     Return set of images and corresponding ground truth labels given data set
     type ('train', 'val', 'val1', 'val2', 'aug-val2', 'test'). Should only be
     internally called by corresponding dataloader.
+
+    Args:
+        type (str): Phase.
+
+        bootstrapped (bool): Whether to bootstrap data.
+
+        seed (int): Seed for reproducibility.
+    
+    Returns:
+        images (List[np.ndarray]): List of sorted images for current phase.
+
+        labels (List[np.ndarray]): List of sorted masks/labels for current phase.
     """
     images, labels = None, None
 
@@ -127,38 +181,48 @@ def collect_data(type='train', bootstrapped=False, seed=42):
         raise ValueError(f"Data type {type} invalid. Valid options include {', '.join(valid_data_types)}.")
 
     if type == 'train':
-        images = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/training/images', is_gt=False)
-        labels = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/training/masks_gt', is_gt=True)
+        images = sorted_data('./training/images', is_gt=False)
+        labels = sorted_data('./training/masks_gt', is_gt=True)
         
         # Bootstrap training samples if training U-Net models
         if bootstrapped:
             images, labels = boostrap_sample(images, labels, seed=seed)
-    
-    elif type == 'vc-train':
-        images = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/subset_images', is_gt=True)
-        labels = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/subset_masks', is_gt=True)
 
     elif type == 'val1':
-        images = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/validation/vs1/images', is_gt=False)
-        labels = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/validation/vs1/masks_gt', is_gt=True)
+        images = sorted_data('./validation/vs1/images', is_gt=False)
+        labels = sorted_data('./validation/vs1/masks_gt', is_gt=True)
 
     elif type == 'val2':
-        images = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/validation/vs2/images', is_gt=False)
-        labels = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/validation/vs2/masks_gt', is_gt=True)
+        images = sorted_data('./validation/vs2/images', is_gt=False)
+        labels = sorted_data('./validation/vs2/masks_gt', is_gt=True)
     
     elif type == 'aug-val2':
-        images = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/validation/aug_vs2/images', is_gt=False)
-        labels = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/validation/aug_vs2/masks_gt', is_gt=True)
+        images = sorted_data('./validation/aug_vs2/images', is_gt=False)
+        labels = sorted_data('./validation/aug_vs2/masks_gt', is_gt=True)
 
     else:
-        images = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/testing/images', is_gt=False)
-        labels = sorted_data('/zfsauton2/home/rohinib/lesion-segmentation/testing/masks_gt', is_gt=True)
+        images = sorted_data('./testing/images', is_gt=False)
+        labels = sorted_data('./testing/masks_gt', is_gt=True)
 
     return images, labels
 
-def get_dataset(type='train', bootstrapped=False, seed=42, device='cuda', model_type='unet'):
+def get_dataset(type='train', bootstrapped=False, seed=42, model_type='unet', device='cuda'):
     """
     Construct dataset.
+
+    Args:
+        type (str): Phase.
+
+        bootstrapped (bool): Whether to bootstrap data.
+        
+        seed (int): Seed for reproducibility.
+
+        model_type (str): Model type.
+
+        device (torch.device): Selected device.
+
+    Returns:
+        dataset (torch.utils.data.Dataset): Corresponding dataset.
     """
     images, labels = collect_data(type=type, bootstrapped=bootstrapped, seed=seed)
     if model_type in ['unet', 'msunet', 'mcunet']:
@@ -169,7 +233,7 @@ def get_dataset(type='train', bootstrapped=False, seed=42, device='cuda', model_
         return UQEnhancedClassificationDataset(images, type, device, preprocessing=utils.PREPROCESSING_UQ_CLS)
     return IndModelDataset(images, model_type, type, device, preprocessing=utils.PREPROCESSING_FN)
 
-def get_training_dataloaders(batch_size, num_workers, pin_memory, shuffle, model_type='unet', boot_seed=42):
+def get_training_dataloaders(batch_size, num_workers, pin_memory, shuffle, model_type='unet', device='cuda', boot_seed=42):
     """
     Generate dataloaders for each type of model supported (UNet, MCU-Net, MSU-Net, classif)
     for training.
@@ -192,29 +256,28 @@ def get_training_dataloaders(batch_size, num_workers, pin_memory, shuffle, model
 
         model_type (str): Type of model.
 
+        device (torch.device): Selected device.
+
         boot_seed (int): Random seed for bootstrapping.
 
     Returns:
+        train_loader, val_loader (List[torch.utils.data.dataloader.DataLoader]):
         Corresponding dataloaders for training and intermediate validation phases.
     """
     # Training
-    if model_type == 'v-cls':
-        # Vanilla (baseline) classification requires its own dataset
-        train_dataset = get_dataset(bootstrapped=False, type='vc-train', seed=boot_seed, model_type=model_type)
-    else:
-        bootstrapped = model_type=='unet'
-        print(f'Boostrapping set to {bootstrapped}.')
-        train_dataset = get_dataset(bootstrapped=bootstrapped, type='train', seed=boot_seed, model_type=model_type)
+    bootstrapped = model_type=='unet'
+    print(f'Boostrapping set to {bootstrapped}.')
+    train_dataset = get_dataset(bootstrapped=bootstrapped, type='train', seed=boot_seed, model_type=model_type, device=device)
     train_dl = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, \
         num_workers=num_workers, pin_memory=pin_memory)
     
     # Validation
-    val1_dataset = get_dataset(bootstrapped=False, type='val1', model_type=model_type)
+    val1_dataset = get_dataset(bootstrapped=False, type='val1', model_type=model_type, device=device)
     val1_dl = DataLoader(val1_dataset, batch_size=batch_size, shuffle=shuffle, \
         num_workers=num_workers, pin_memory=pin_memory)
 
     # Combine training (TR) and validation 2 (VS2) datasets
-    aug_val2_dataset = get_dataset(bootstrapped=False, type='aug-val2', model_type=model_type)
+    aug_val2_dataset = get_dataset(bootstrapped=False, type='aug-val2', model_type=model_type, device=device)
     union_dataset = torch.utils.data.ConcatDataset([train_dataset, aug_val2_dataset])
     trainval2_dl = DataLoader(union_dataset, batch_size=batch_size, shuffle=shuffle, \
         num_workers=num_workers, pin_memory=pin_memory)
@@ -223,7 +286,7 @@ def get_training_dataloaders(batch_size, num_workers, pin_memory, shuffle, model
         return train_dl, val1_dl
     return trainval2_dl, val1_dl
 
-def get_testing_dataloader(num_workers, pin_memory, batch_size=1, model_type='unet'):
+def get_testing_dataloader(num_workers, pin_memory, batch_size=1, model_type='unet', device='cuda'):
     """
     Generate testing dataloaders for test-time model evaluation.
 
@@ -236,13 +299,15 @@ def get_testing_dataloader(num_workers, pin_memory, batch_size=1, model_type='un
 
         model_type (str): Type of model.
 
+        device (torch.device): Selected device.
+
     Returns:
-        Corresponding testing dataloader.
+        test_loader (torch.utils.data.dataloader.DataLoader): Corresponding testing dataloader.
     """
-    test_dataset = get_dataset(bootstrapped=False, type='test', model_type=model_type)
-    test_dl = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, \
+    test_dataset = get_dataset(bootstrapped=False, type='test', model_type=model_type, device=device)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, \
         num_workers=num_workers, pin_memory=pin_memory)
-    return test_dl
+    return test_loader
 
 def perform_augmentations(init_dir, augmented_dir, augmented_label_dict):
     """
@@ -320,14 +385,6 @@ def perform_augmentations(init_dir, augmented_dir, augmented_label_dict):
     # Add entries for new augmentated images to labels_dict
     df = pd.DataFrame(labeling_data, columns=['image_id', 'value'])
     df.to_csv(augmented_label_dict, index=False)
-
-def data_loader_for_bn_update(b_x, b_y, B):
-    """
-    Construct mini-batch dataloaders to update batch norm statistics
-    for SWA models.
-    """
-    dataset = TensorDataset(b_x, b_y)
-    return DataLoader(dataset, batch_size=B, shuffle=False)
 
 ########################################################################
 class VanillaClassificationDataset(BaseDataset):
