@@ -32,8 +32,6 @@ METRIC_KEYS = [
     'Average_AUROC(micro)',
     'Average_AUROC(macro)',
     'PE',
-    'Average_ES',
-    'Average_AE',
 ]
 
 ######################
@@ -226,7 +224,7 @@ def ece(probs, targets):
 # UTILITIES
 ######################
 def compute_metrics(metric_dict, model_type, probs, preds, pes, targets, save_results, \
-    roc_results_file, model_results_file, eu=None, au=None):
+    roc_results_file, model_results_file):
     """
     Compute relevant metrics for model evaluation.
     """
@@ -259,14 +257,9 @@ def compute_metrics(metric_dict, model_type, probs, preds, pes, targets, save_re
     # Average predictive entropy value
     metric_dict['PE'] = torch.mean(pes).item()
 
-    # Uncertainty values
-    if eu is not None:
-        metric_dict['Average_ES'] = eu
-        metric_dict['Average_AE'] = au
-    else:
-        metric_dict['Average_ES'] = metric_dict['Average_AE'] = 0.0
-
     # Generate .txt file with results for ROC curve plotting
+    print()
+    print(f'Saving results? {save_results}')
     if save_results:
         values = [utils.convert_to_numpy(probs[:, 0]), utils.convert_to_numpy(malignant_target), \
             utils.convert_to_numpy(probs[:, 1]), utils.convert_to_numpy(sebk_target)]

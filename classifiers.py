@@ -49,6 +49,9 @@ class GenericClassifier(nn.Module):
 
 class ModXception(GenericClassifier):
     def __init__(self, model_name, pretrained=True):
+        """
+        Xception model.
+        """
         super().__init__(model_name, pretrained)
         n_features, n_classes = 2048, len(utils.LABEL_TO_IND)
         self.model.fc = nn.Sequential(
@@ -60,6 +63,9 @@ class ModXception(GenericClassifier):
 
 class ModViT(GenericClassifier):
     def __init__(self, model_name, pretrained=True):
+        """
+        Vision transformer model.
+        """
         super().__init__(model_name, pretrained)
         self.model.head_drop = nn.Dropout(0.4)
         n_features, n_classes = 768, len(utils.LABEL_TO_IND)
@@ -77,7 +83,7 @@ class ModViT(GenericClassifier):
         Unfreeze attention and feed-forward layers.
         """
         for block in self.model.blocks:
-            # Unfreeze multi-head attention
+            # Unfreeze multi-headed attention
             for param in block.attn.parameters():
                 param.requires_grad = True
 

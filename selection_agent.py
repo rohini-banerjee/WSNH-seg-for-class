@@ -2,7 +2,6 @@
 # Define selection agent.
 # -----------------------------------------------------------------------------
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import argparse
 import cv2
 import dataset
@@ -51,6 +50,12 @@ class SelectionAgent:
         """
         new_img = cv2.copyMakeBorder(img, t, b, l, r, cv2.BORDER_CONSTANT, value=[0, 0, 0])
         return new_img
+    
+    def _crop_mbs(self, obj, x, y, d):
+        """
+        Crop and return minimum bounding square (MBS).
+        """
+        return obj[y:y+d, x:x+d]
 
     def AutoCropper(self, img, p_map, eu_map, au_map):
         """
@@ -109,7 +114,7 @@ class SelectionAgent:
         lesion_pixels = np.argwhere(mask == 255)
         if len(lesion_pixels) == 0:
             is_failed_seg = True
-            normalized_eu = utils.rescale_01(eu_map)
+            normalized_eu = utils.rescale(eu_map, apply_activation=False)
             eu_mask = utils.convert_to_binary_mask(normalized_eu)
             mask = (eu_mask * 255).astype(np.uint8)
 
@@ -192,10 +197,10 @@ class SelectionAgent:
         cv2.rectangle(contours_p_map, (new_x, new_y), (new_x + d, new_y + d), (0, 255, 0), 2)
 
         # Crop around lesion
-        cropped_padded_img = padded_img[new_y:new_y+d, new_x:new_x+d]
-        cropped_p_map = padded_p_map[new_y:new_y+d, new_x:new_x+d]
-        cropped_padded_eu_map = padded_eu_map[new_y:new_y+d, new_x:new_x+d]
-        cropped_padded_au_map = padded_au_map[new_y:new_y+d, new_x:new_x+d]
+        cropped_padded_img = self._crop_mbs(padded_img, new_x, new_y, d)
+        cropped_p_map = self._crop_mbs(padded_p_map, new_x, new_y, d)
+        cropped_padded_eu_map = self._crop_mbs(padded_eu_map, new_x, new_y, d)
+        cropped_padded_au_map = self._crop_mbs(padded_au_map, new_x, new_y, d)
         
         return img, contours_img, p_map, contours_p_map, cropped_padded_img, cropped_p_map, cropped_padded_eu_map, cropped_padded_au_map
 
@@ -345,7 +350,8 @@ class SelectionAgent:
 
             # If segmentation is sufficient, select and return kernel with SMALLEST
             # uncertainty. Otherwise, select and return kernel with LARGEST uncertainty
-            # since most uncertain regions coincide with difficult lesion characteristics
+            # since regions with highest uncertainty usually coincide with areas of
+            # difficulty for lesion identification.
             if segmentation_succeeded:
                 return ranked_kernels[0]
             return ranked_kernels[-1]

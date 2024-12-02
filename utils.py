@@ -1,6 +1,7 @@
 # -----------------------------------------------------------------------------
 # Global variables (constants) and utility functions.
 # -----------------------------------------------------------------------------
+import classifiers
 import cv2
 import json
 import metrics
@@ -9,9 +10,8 @@ import os
 import pandas as pd
 import torch
 
-# from classifier import ModXception, ModViT
 from collections import OrderedDict
-from segmenter import UNetSegmenter, MonteCarloSegmenter
+from segmenter import UNetSegmenter
 from torch.nn import functional as F
 from torch.optim.swa_utils import AveragedModel
 from torchvision import transforms
@@ -49,6 +49,13 @@ UNET_MODEL_PATHS = [
     './weights/ES4_bunet1373_model.pth',
     './weights/ES5_bunet1454_model.pth',
     './weights/ES4_bunet1555_model.pth',
+]
+
+CLASSIF_PATHS = [
+    './weights/ind_roi-cls_Xception_model_e60.pth',
+    './weights/ind_roi-uq-cls_Xception_model_e60.pth',
+    './weights/ind_kl-uq-cls_Xception_model_e60.pth',
+    './weights/ind_ks-uq-cls_Xception_model_e60.pth'
 ]
 
 MOD_NAMES = {'vit_base_patch16_224': 'ViT', 'legacy_xception': 'Xception'}
@@ -137,12 +144,14 @@ PREPROCESSING_UQ_CLS = transforms.Compose(
 ######################
 # TRAINING
 ######################
-def choose_device(device):
+def choose_device(device, device_num=None):
     """
     Choose the device to run model on.
     """
     if not ((torch.cuda.is_available() and 'cuda' in device) or (torch.backends.mps.is_available() and device == 'mps')):
         device = 'cpu'
+    elif device_num is not None:
+        device = f'cuda:{device_num}'
     else:
         device = 'cuda'
     return torch.device(device)
@@ -279,17 +288,38 @@ def load_tensor(img, device):
     img = PREPROCESSING_FN(img)
     return img.unsqueeze(0).type(torch.FloatTensor).to(device)
 
+def load_model(model, model_path, device):
+    try:
+        # Assume we are loading model onto same device it was trained using
+        model.load_state_dict(torch.load(model_path, weights_only=True))
+    except:
+        # If not, force load onto available device
+        model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+    return model
+
 def load_ensemble(device):
     """
-    Load U-Net segmentation model ensemble to specified device.
+    Load U-Net segmentation ensemble to specified device.
     """
     ensemble = []
     for i in range(len(UNET_MODEL_PATHS)):
         mod = UNetSegmenter().to(device)
-        mod.load_state_dict(torch.load(UNET_MODEL_PATHS[i], weights_only=True))
+        load_model(mod, UNET_MODEL_PATHS[i], device)
         mod.eval()
         ensemble.append(mod)
     return ensemble
+
+def load_cohort(device):
+    """
+    Load expert ensemble of classification models to specified device.
+    """
+    cohort = []
+    for i in range(len(CLASSIF_PATHS)):
+        trained_model = classifiers.ModXception('legacy_xception', True).to(device)
+        load_model(trained_model, CLASSIF_PATHS[i], device)
+        trained_model.eval()
+        cohort.append(trained_model)
+    return cohort
 
 def infer(image, model, device, add_activation, set_eval=True, task='seg'):
     """
@@ -432,6 +462,14 @@ def check_masks(phase="training"):
         print(f'Fewer images than masks in phase {phase}.')
     else:
         print(f'Fewer masks than images in phase {phase}.')
+
+def check_cuda_devices():
+    """
+    Check available GPU devices.
+    """
+    print(f"{torch.cuda.device_count()} devices detected")
+    for i in range(torch.cuda.device_count()):
+        print(f"Device {i}: {torch.cuda.get_device_name(i)}")
 
 def print_line():
     """

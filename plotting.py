@@ -44,7 +44,6 @@ def plot_augmentations(id, img_path, mask_path, save_path=None):
         save_path = f'{id}_data_augmentations.png'
     plt.savefig(save_path, bbox_inches='tight', dpi=300)
 
-
 def plot_prediction(id, image, gt, p_map, eu_map, au_map, save_path=None):
     fig, axes = plt.subplots(1, 5, figsize=(14,4), sharey=True)
 
@@ -107,7 +106,3 @@ def plot_loaded_classif_data(id, resized_img, resized_roi, resized_eu, resized_k
     if save_path is None:
         save_path = f'{id}_uq-enhanced.png'
     plt.savefig(save_path, bbox_inches='tight', dpi=300)
-
-
-if __name__ == '__main__':
-    plot_augmentations('ISIC_000', '/zfsauton2/home/rohinib/WSNH-seg-for-class/examples/ISIC_0000002_R270.jpg', '/zfsauton2/home/rohinib/WSNH-seg-for-class/examples/ISIC_0000002_segmentation_R270.png')
