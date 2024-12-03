@@ -305,15 +305,15 @@ def main(args):
     utils.load_model(trained_model, args.model_save_path, device)
 
     # Test classification model
-    # evaluate_single_classifier(
-    #     test_loader=test_loader,
-    #     model=trained_model,
-    #     model_type=args.model_type,
-    #     device=device,
-    #     save_results=args.save_results,
-    #     roc_results_file=utils.RESULTS_DIR+f'{args.model_type}_roc_values.txt',
-    #     model_results_file=utils.RESULTS_DIR+f'{args.model_type}_metrics.json',
-    # )
+    evaluate_single_classifier(
+        test_loader=test_loader,
+        model=trained_model,
+        model_type=args.model_type,
+        device=device,
+        save_results=args.save_results,
+        roc_results_file=utils.RESULTS_DIR+f'{args.model_type}_roc_values.txt',
+        model_results_file=utils.RESULTS_DIR+f'{args.model_type}_metrics.json',
+    )
     ###############################
 
     ####    EXPERT ENSEMBLE    ####
@@ -332,14 +332,14 @@ def main(args):
         loaders.append(test_loader)
 
     # Test expert ensemble of classifiers
-    # evaluate_independent_ensemble(
-    #     test_loaders=loaders,
-    #     ensemble=ensemble,
-    #     device=device,
-    #     save_results=args.save_results,
-    #     roc_results_file=utils.RESULTS_DIR+'ind-ensemble_roc_values.txt',
-    #     model_results_file=utils.RESULTS_DIR+'ind-ensemble_metrics.json',
-    # )
+    evaluate_independent_ensemble(
+        test_loaders=loaders,
+        ensemble=ensemble,
+        device=device,
+        save_results=args.save_results,
+        roc_results_file=utils.RESULTS_DIR+'ind-ensemble_roc_values.txt',
+        model_results_file=utils.RESULTS_DIR+'ind-ensemble_metrics.json',
+    )
     ###############################
     
     ####      GradCAM VIS      ####
