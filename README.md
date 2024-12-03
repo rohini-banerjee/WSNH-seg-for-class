@@ -213,6 +213,9 @@ optional arguments:
 
 You can customize hyperparameters such as optimizer, number of epochs, or batch size by setting the appropriate arguments in the command line.
 
+![Results2](assets/segmentation_training_curves.png "Training curves for boostrapped U-Net")
+*Example training and validation curves for bootstrapped U-Net segmentation model.*
+
 ---
 
 ## 📩 Authors and Contact
