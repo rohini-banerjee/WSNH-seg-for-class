@@ -72,7 +72,7 @@ def evaluate_segmentation(model, model_type, ensemble, dataloader, device):
     print(f"Test DSC Value = {test_val:.4f}")
     print("-" * 50)
 
-def visualize_grad_cam(model, inp, target_layers, target):
+def generate_grad_cam(model, inp, target_layers, target):
     """
     Overlay gradCAM saliency map on target over input image.
 
@@ -132,7 +132,7 @@ def extract_grad_cam_repr(test_loaders, all_models, device, save_path, plot_idx=
             # Select target. If set to None, will produce map for the highest scoring class.
             # Otherwise, will produce map for specified class(es).
             target = [ClassifierOutputTarget(b_y.item())]
-            plot_img, gradcam_result = visualize_grad_cam(all_models[i], b_x, target_layers, target)
+            plot_img, gradcam_result = generate_grad_cam(all_models[i], b_x, target_layers, target)
             if idx == plot_idx:
                 plot_img_name = id[0]
                 all_results.append((plot_img, gradcam_result))
@@ -290,22 +290,8 @@ def main(args):
         print('Setting CUDA Device Node')
     print(f"Running on {device}")
     
-    # Create dataloaders for each member of the expert ensemble
-    loaders = []
-    for mtype in ['roi-cls', 'roi-uq-cls', 'kl-uq-cls', 'ks-uq-cls']:
-        test_loader = dataset.get_testing_dataloader(
-            num_workers=args.num_workers,
-            pin_memory=args.pin_memory,
-            batch_size=args.batch_size,
-            model_type=mtype,
-            device=device,
-        )
-        loaders.append(test_loader)
-    
-    # Load in expert ensemble of trained classifiers
-    ensemble = utils.load_cohort(device)
-
-    # Create dataloader for baseline model
+    ####   SINGLE CLASSIFIER   ####
+    # Create dataloader for single model
     test_loader = dataset.get_testing_dataloader(
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
@@ -319,34 +305,66 @@ def main(args):
     utils.load_model(trained_model, args.model_save_path, device)
 
     # Test classification model
-    evaluate_single_classifier(
-        test_loader=test_loader,
-        model=trained_model,
-        model_type=args.model_type,
-        device=device,
-        save_results=args.save_results,
-        roc_results_file=utils.RESULTS_DIR+f'{args.model_type}_roc_values.txt',
-        model_results_file=utils.RESULTS_DIR+f'{args.model_type}_metrics.json',
-    )
+    # evaluate_single_classifier(
+    #     test_loader=test_loader,
+    #     model=trained_model,
+    #     model_type=args.model_type,
+    #     device=device,
+    #     save_results=args.save_results,
+    #     roc_results_file=utils.RESULTS_DIR+f'{args.model_type}_roc_values.txt',
+    #     model_results_file=utils.RESULTS_DIR+f'{args.model_type}_metrics.json',
+    # )
+    ###############################
+
+    ####    EXPERT ENSEMBLE    ####
+    # Load in expert ensemble of trained classifiers
+    ensemble = utils.load_cohort(device)
+
+    loaders = []
+    for mtype in ['roi-cls', 'roi-uq-cls', 'kl-uq-cls', 'ks-uq-cls']:
+        test_loader = dataset.get_testing_dataloader(
+            num_workers=args.num_workers,
+            pin_memory=args.pin_memory,
+            batch_size=args.batch_size,
+            model_type=mtype,
+            device=device,
+        )
+        loaders.append(test_loader)
 
     # Test expert ensemble of classifiers
-    evaluate_independent_ensemble(
-        test_loaders=loaders,
-        ensemble=ensemble,
-        device=device,
-        save_results=args.save_results,
-        roc_results_file=utils.RESULTS_DIR+'ind-ensemble_roc_values.txt',
-        model_results_file=utils.RESULTS_DIR+'ind-ensemble_metrics.json',
-    )
+    # evaluate_independent_ensemble(
+    #     test_loaders=loaders,
+    #     ensemble=ensemble,
+    #     device=device,
+    #     save_results=args.save_results,
+    #     roc_results_file=utils.RESULTS_DIR+'ind-ensemble_roc_values.txt',
+    #     model_results_file=utils.RESULTS_DIR+'ind-ensemble_metrics.json',
+    # )
+    ###############################
+    
+    ####      GradCAM VIS      ####
+    # # Create dataloader for baseline classifier
+    # baseline_loader = dataset.get_testing_dataloader(
+    #     num_workers=args.num_workers,
+    #     pin_memory=args.pin_memory,
+    #     batch_size=args.batch_size,
+    #     model_type='v-cls',
+    #     device=device,
+    # )
 
-    # To properly run gradCAM, modify forward pass of GenericClassifier module to
-    # only output logits.
+    # # Load in trained baseline classifier
+    # path_to_baseline = utils.WEIGHTS_DIR + 'baseline_xception_model.pth'
+    # baseline_model = ModXception('legacy_xception', True).to(device)
+    # utils.load_model(baseline_model, path_to_baseline, device)
+
+    # # To properly run gradCAM, modify forward pass of GenericClassifier module to
+    # # only output logits.
     # extract_grad_cam_repr(
-    #     test_loaders=([test_loader]+loaders),
-    #     all_models=([trained_model]+ensemble),
+    #     test_loaders=([baseline_loader]+loaders),
+    #     all_models=([baseline_model]+ensemble),
     #     device=device,
     #     save_path=(utils.PLOTS_DIR+f'ex_gradCAM.png'),
-    #     plot_idx=3,
+    #     plot_idx=0,
     # )
 
 

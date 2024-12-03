@@ -150,8 +150,7 @@ def main(args):
     args.perform_es = bool(args.perform_es)
 
     # Set the device
-    device = utils.choose_device(args.device)
-    # device = utils.choose_device(args.device, args.device_num)
+    device = utils.choose_device(args.device, args.device_num)
     if str(device) == 'cuda':
         print('Setting CUDA Device Node')
     print(f"Running on {device}")
