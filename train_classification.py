@@ -194,7 +194,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Parameters for classification training process.')
+    parser = argparse.ArgumentParser(description='Parameters for classification training.')
 
     parser.add_argument('model_type', type=str, help='Model type.')
 

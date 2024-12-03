@@ -451,7 +451,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Arguments for the Selection Agent.')
+    parser = argparse.ArgumentParser(description='Parameters for Selection Agent.')
     
     parser.add_argument('--device', type=str, default='cuda', help='Device to use for training.')
     parser.add_argument('--img_pathname', type=str, default='./examples/ISIC_0000002_R270.jpg', help='Pathname to test image.')
@@ -459,6 +459,6 @@ if __name__ == '__main__':
     parser.add_argument('--label_pathname', type=str, default='./examples/ISIC_0000002_R270_label.txt', help='Path to gold standard diagnosis for test image.')
 
     args = parser.parse_args()
-
+    
     main(args)
     
