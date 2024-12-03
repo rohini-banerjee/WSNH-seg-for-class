@@ -170,6 +170,49 @@ optional arguments:
   --label_pathname LABEL_PATHNAME   Path to gold standard diagnosis for test image.
 ```
 
+### Segmentation
+
+Training new segmentation model(s) for the Segmentation Agent is easy. Simply choose the desired ensemble architecture between [U-Net](https://arxiv.org/pdf/1505.04597) or [Monte Carlo U-Net (MCU-Net)](https://arxiv.org/pdf/2007.03995) and run:
+
+``` console
+> python3 train_segmentation.py -h
+usage: train_segmentation.py [-h] [--image_size IMAGE_SIZE] [--channels CHANNELS] [--batch_size BATCH_SIZE] [--epochs EPOCHS]
+                             [--boot_seed BOOT_SEED] [--loss_crit LOSS_CRIT] [--lr LR] [--beta1 BETA1] [--beta2 BETA2]
+                             [--eps EPS] [--num_workers NUM_WORKERS] [--pin_memory PIN_MEMORY] [--device DEVICE]
+                             [--device_num DEVICE_NUM] [--perform_es PERFORM_ES] [--save_train_results SAVE_TRAIN_RESULTS]
+                             [--save_path SAVE_PATH] [--save_freq SAVE_FREQ] [--seed SEED]
+                             {unet,mcunet}
+
+Parameters for segmentation training.
+
+positional arguments:
+  {unet,mcunet}                             Model type for training.
+
+optional arguments:
+  -h, --help                                show this help message and exit
+  --image_size IMAGE_SIZE                   The size of the input image.
+  --channels CHANNELS                       The number of channels of the input image.
+  --batch_size BATCH_SIZE                   Batch size.
+  --epochs EPOCHS                           Number of epochs.
+  --boot_seed BOOT_SEED                     Random seed for bootstrapping data.
+  --loss_crit LOSS_CRIT                     Combined loss criterion.
+  --lr LR                                   Learning rate.
+  --beta1 BETA1                             Beta 1.
+  --beta2 BETA2                             Beta 2.
+  --eps EPS                                 Epsilon.
+  --num_workers NUM_WORKERS                 Number of workers for the data loader.
+  --pin_memory PIN_MEMORY                   Pin memory for the data loader.
+  --device DEVICE                           Device to use for training.
+  --device_num DEVICE_NUM                   Device number.
+  --perform_es PERFORM_ES                   Early stopping during training.
+  --save_train_results SAVE_TRAIN_RESULTS   Whether to save training results.
+  --save_path SAVE_PATH                     Directory to save the model.
+  --save_freq SAVE_FREQ                     Frequency of epochs to save the model.
+  --seed SEED                               Random seed.
+```
+
+You can customize hyperparameters such as optimizer, number of epochs, or batch size by setting the appropriate arguments in the command line.
+
 ---
 
 ## 📩 Authors and Contact
