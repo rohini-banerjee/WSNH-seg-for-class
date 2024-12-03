@@ -47,7 +47,7 @@ class MonteCarloSegmenter(nn.Module):
         else:
             raise ValueError(f"Invalid shape. Expected shape of 3 or 4 dimensions. Go {segmentation_shape}")
 
-        # Placeholder to collect the ensembles
+        # Placeholder to collect the ensemble
         ensemble = torch.zeros([T] + segmentation_shape).to(x.device)
 
         # Collects all ensembles

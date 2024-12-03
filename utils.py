@@ -34,21 +34,21 @@ PLOTS_DIR = './plots/'
 
 # Candidate model paths
 UNET_MODEL_PATHS = [
-    './weights/ES5_bunet111_model.pth',
-    './weights/ES9_bunet232_model.pth',
-    './weights/ES4_bunet334_model.pth',
-    './weights/ES7_bunet494_model.pth',
-    './weights/ES2_bunet551_model.pth',
-    './weights/ES15_bunet676_model.pth',
-    './weights/ES4_bunet727_model.pth',
-    './weights/ES5_bunet838_model.pth',
-    './weights/ES3_bunet949_model.pth',
-    './weights/ES2_bunet1001_model.pth',
-    './weights/ES3_bunet1181_model.pth',
-    './weights/ES4_bunet1223_model.pth',
-    './weights/ES4_bunet1373_model.pth',
-    './weights/ES5_bunet1454_model.pth',
-    './weights/ES4_bunet1555_model.pth',
+    './weights/bunet111_model.pth',
+    './weights/bunet232_model.pth',
+    './weights/bunet334_model.pth',
+    './weights/bunet494_model.pth',
+    './weights/bunet551_model.pth',
+    './weights/bunet676_model.pth',
+    './weights/bunet727_model.pth',
+    './weights/bunet838_model.pth',
+    './weights/bunet949_model.pth',
+    './weights/bunet1001_model.pth',
+    './weights/bunet1181_model.pth',
+    './weights/bunet1223_model.pth',
+    './weights/bunet1373_model.pth',
+    './weights/bunet1454_model.pth',
+    './weights/bunet1555_model.pth',
 ]
 
 CLASSIF_PATHS = [
@@ -197,6 +197,13 @@ def check_layer_in_model(model, layer):
     # i.e. Layed: torch.nn.BatchNorm2d, torch.nn.Linear
     print(any(isinstance(layer, torch.nn.BatchNorm2d) for layer in model.modules()))
 
+def random_init(m):
+    """
+    Set random initialization of weights in CNN.
+    """
+    if isinstance(m, torch.nn.Conv2d):
+        torch.nn.init.xavier_uniform_(m.weight.data)
+
 ######################
 # INFERENCE
 ######################
@@ -294,10 +301,10 @@ def load_model(model, model_path, device):
     """
     try:
         # Assume we are loading model onto same device it was trained using
-        model.load_state_dict(torch.load(model_path, weights_only=True))
+        model.load_state_dict(rename_state_dict(torch.load(model_path, weights_only=True)))
     except:
         # If not, force load onto available device
-        model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+        model.load_state_dict(rename_state_dict(torch.load(model_path, map_location=torch.device(device))))
     # Set model to eval mode
     model.eval()
 

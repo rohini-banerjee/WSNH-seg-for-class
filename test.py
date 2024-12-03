@@ -20,6 +20,58 @@ from torch.nn import functional as F
 from tqdm import tqdm
 
 
+def evaluate_segmentation(model, model_type, ensemble, dataloader, device):
+    """
+    Evaluate single segmenter OR segmentation ensemble.
+
+    Args:
+        model (torch.nn.Module): Trained classifier.
+
+        model_type (str): Model type.
+
+        ensemble (List[segmenter.UNetSegmenter]): List of segmentation models.
+
+        dataloader (torch.utils.data.dataloader.DataLoader): Dataloader.
+
+        device (torch.device): Selected device.
+
+    Returns:
+        None.
+    """
+    test_val = 0.0
+    with tqdm(dataloader, desc='Testing', ascii=' >=') as pbar:
+        with torch.no_grad():
+            for b_x, b_y, _ in pbar:
+                # Move to device
+                b_x = b_x.type(torch.FloatTensor).to(device)
+                b_y = b_y.round().type(torch.LongTensor).to(device)
+
+                # Forward pass
+                if model_type == 'unet':
+                    b_y_hat = model(b_x)
+                elif model_type == 'mcunet':
+                    _, b_y_logits, _, _ = model(b_x)
+                    b_y_hat = F.sigmoid(b_y_logits)
+                else:
+                    inferences = []
+                    for i in range(len(ensemble)):
+                        mod = ensemble[i]
+                        inferences.append(mod(b_x))
+                    # Concatenate network predictions, has shape (B, N, H, W)
+                    b_x_prime = torch.cat(inferences, dim=1)
+                    b_y_hat = torch.mean(b_x_prime, dim=1)
+
+                image_val = metrics.get_dice_score(y_pred=b_y_hat, y_true=b_y).detach().item()
+                test_val += image_val / len(dataloader)
+        
+                # Update the progress bar
+                pbar.set_postfix(test_val=f"{image_val:.4f}")
+                pbar.update()
+    
+    print("-" * 50)
+    print(f"Test DSC Value = {test_val:.4f}")
+    print("-" * 50)
+
 def visualize_grad_cam(model, inp, target_layers, target):
     """
     Overlay gradCAM saliency map on target over input image.
