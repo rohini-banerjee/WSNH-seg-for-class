@@ -2,6 +2,8 @@
 <a href="https://pytorch.org/"><img src="https://img.shields.io/badge/PyTorch-v2.0+-red.svg?logo=PyTorch&style=for-the-badge" /></a>
 <a href="https://www.python.org"><img src="https://img.shields.io/badge/python-v3.8+-blue.svg?logo=python&style=for-the-badge" /></a>
 
+<a href="https://docs.conda.io/projects/conda/en/latest/index.html"><img src="https://img.shields.io/badge/Anaconda-44A833?logo=anaconda&logoColor=fff" /></a>
+
 _Uncertainty-Driven Segmentation for Skin Lesion Classification_  
 
 ---
