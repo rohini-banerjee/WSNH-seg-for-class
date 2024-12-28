@@ -227,6 +227,6 @@ For inquiries, permission requests, or collaboration opportunities, please conta
 
 ## Intended Use
 
-This repository is shared to provide transparency and demonstrate the methods used in this research. **Unauthorized use, modification, or distribution is strictly prohibited until further specified.**
+This repository is shared to provide transparency and demonstrate the methods used in this research. **Unauthorized use, modification, or distribution is strictly prohibited.**
 
 ---
