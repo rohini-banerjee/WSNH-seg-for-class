@@ -133,6 +133,13 @@ PREPROCESSING_FN = transforms.Compose(
         transforms.ToTensor(),
     ]
 )
+
+PREPROCESSING_PRETRAINED = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
         
 PREPROCESSING_UQ_CLS = transforms.Compose(
     [
@@ -150,6 +157,8 @@ def choose_device(device, device_num=None):
     """
     if not ((torch.cuda.is_available() and 'cuda' in device) or (torch.backends.mps.is_available() and device == 'mps')):
         device = 'cpu'
+    elif torch.backends.mps.is_available() and device == 'mps':
+        device = 'mps'
     elif device_num is not None:
         device = f'cuda:{device_num}'
     else:
@@ -174,14 +183,6 @@ def numel(m, only_trainable=False):
         parameters = [p for p in parameters if p.requires_grad]
     unique = {p.data_ptr(): p for p in parameters}.values()
     return sum(p.numel() for p in unique)
-
-def check_trainable_params(model):
-    """
-    Prints only trainable layers in specified model.
-    """
-    for name, param in model.named_parameters():
-        if param.requires_grad:
-            print(f"Layer {name} is trainable")
 
 def print_params(model):
     """

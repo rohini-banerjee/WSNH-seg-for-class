@@ -459,6 +459,5 @@ if __name__ == '__main__':
     parser.add_argument('--label_pathname', type=str, default='./examples/ISIC_0000002_R270_label.txt', help='Path to gold standard diagnosis for test image.')
 
     args = parser.parse_args()
-    
     main(args)
     

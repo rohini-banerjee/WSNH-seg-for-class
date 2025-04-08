@@ -46,6 +46,14 @@ class GenericClassifier(nn.Module):
         for param in self.model.fc.parameters():
             param.requires_grad = True
 
+    def check_trainable_params(self):
+        """
+        Prints only trainable layers in specified model.
+        """
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                print(f"Layer {name} is trainable")
+
 
 class ModXception(GenericClassifier):
     def __init__(self, model_name, pretrained=True):
@@ -59,6 +67,16 @@ class ModXception(GenericClassifier):
             nn.Flatten(),
             nn.Linear(n_features, n_classes)
         )
+
+    def freeze_early_layers(self, exclude_i):
+        """
+        Freeze layers in Xception blocks up to specificied block number.
+        """
+        freeze_til = f'block{exclude_i}'
+        for name, param in self.model.named_parameters():
+            if freeze_til in name:
+                break
+            param.requires_grad = False
 
 
 class ModViT(GenericClassifier):

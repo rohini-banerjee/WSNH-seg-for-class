@@ -142,4 +142,43 @@ def plot_gradCAM_results(id, all_results, save_path=None):
     if save_path is None:
         save_path = utils.PLOTS_DIR + f'{id}_gradCAM_vis.png'
     plt.savefig(save_path, bbox_inches='tight', dpi=300)
+
+def plot_single_model_curves(fname, model_name, save_path=None):
+    """
+    Plot training and validation curves.
+    """
+    with open(fname, 'r') as f:
+        lines = f.readlines()
+        values=[]
+        for line in lines:
+            lst = line.split(',')
+            values.append(list(np.array(lst, dtype=float)))
     
+    fig, axs = plt.subplots(1,2, figsize=(12,4),layout='constrained')
+    x = list(range(1, len(values[0])+1))
+
+    axs[0].set_title('Training and Validation Loss', fontsize=13)
+    axs[0].set_xlabel('Iterations', fontsize=14)
+    axs[0].set_ylabel(r'Cross Entropy Loss($\downarrow$)', fontsize=12)
+    axs[0].plot(x, values[0], color='darkblue', linestyle='--', ms=7)
+    axs[0].plot(x, values[1], color='darkblue', marker='d', ms=5)
+
+    axes_0_legend = [Line2D([0], [0], color='darkblue', linestyle='--', ms=7),
+                    Line2D([0], [0], color='darkblue', marker='d', markersize=5)]
+    axs[0].legend(axes_0_legend, ['train', 'val'],loc='center right')
+
+    axs[1].set_title('Training and Validation Accuracy', fontsize=13)
+    axs[1].set_xlabel('Iterations', fontsize=14)
+    axs[1].set_ylabel(r'Accuracy($\uparrow$)', fontsize=12)
+    axs[1].plot(x, values[2], color='gold', linestyle='--', ms=7)
+    axs[1].plot(x, values[3], color='gold', marker='d', ms=5)
+
+    axes_1_legend = [Line2D([0], [0], color='gold',linestyle='--', ms=7),
+                    Line2D([0], [0], color='gold', marker='d', markersize=5)]
+    axs[1].legend(axes_1_legend, ['train', 'val'],loc='lower right')
+
+    plt.suptitle(f'{model_name}', fontsize=15)
+
+    if save_path is None:
+        save_path = utils.PLOTS_DIR + f'{model_name}_training_curves.png'
+    plt.savefig(save_path, bbox_inches='tight', dpi=300)
