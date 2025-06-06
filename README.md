@@ -23,6 +23,9 @@ for Seborrheic Keratosis (SK) and melanoma (M) classification.
 ![Results1](assets/gradCAM_results.png "Example GradCAM saliency map")
 *Example GradCAM saliency maps from each member of the expert ensemble on corresponding input images.*
 
+Lesions exhibit high variability between types but strong similarity within each type.
+![Skin Examples](assets/diagnosis-difficulty.png "Example of skin conditions")
+
 ---
 
 ## 🔏 Current License and Restrictions
