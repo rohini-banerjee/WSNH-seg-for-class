@@ -61,7 +61,7 @@ You can easily set up all appropriate dependencies for this project with **a sin
 
 ### Data
 
-The skin lesion data is open-source and available through the [ISIC Archive](https://challenge.isic-archive.com/data/#2017). Images (`images`) and corresponding ground truth masks (`masks_gt`) for each phase should be structured as follows to be compliant with the codebase:
+The skin lesion data is open-source and available through the [ISIC Archive](https://challenge.isic-archive.com/data/#2017). Images (`images`) and corresponding ground truth masks (`masks_gt`) for each phase should be structured as follows to be compliant with the codebase. (NOTE: Under `images` please specify three subdirectories for each class):
 ``` bash
 .
 ├── ...
@@ -69,6 +69,9 @@ The skin lesion data is open-source and available through the [ISIC Archive](htt
 ├── results
 ├── testing
 │   ├── images
+│   │   ├── benign_nevi
+│   │   ├── malignant
+│   │   ├── seb_keratosis
 │   ├── masks_gt
 ├── training
 │   ├── images
