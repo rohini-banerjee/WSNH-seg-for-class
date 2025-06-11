@@ -31,7 +31,7 @@ METRIC_KEYS = [
     'Average_Accuracy(macro)',
     'Average_AUROC(micro)',
     'Average_AUROC(macro)',
-    'PE',
+    'EU',
 ]
 
 ######################
@@ -194,22 +194,69 @@ def get_multi_accuracy(y_preds, targets, reduction='micro'):
     return multiclass_accuracy(y_preds, targets, num_classes=len(utils.LABEL_TO_IND), average=reduction).detach().item()
 
 ### MODEL QUALITY
+def entropy(tensor, dim=-1, eps=1e-7):
+    """
+    Compute entropy of a probability distribution.
+    """
+    return -torch.sum(tensor * torch.log(tensor + eps), dim=dim)
+
 def get_predictive_entropy(logits, reduction=None, dim=1):
     """
-    Compute predictive entropy across class predictions. If reduction is not None,
-    return mean value across batch dimension.
+    Compute predictive entropy across class predictions. If reduction is
+    not None, return mean value across batch dimension.
     """
+    if reduction not in [None, 'mean', 'sum']:
+        raise ValueError(f"Invalid reduction: {reduction}")
+    
     prob_dist = F.softmax(logits, dim=dim)
-    entropy = -torch.sum(prob_dist * torch.log(prob_dist + 1e-10), dim=dim)
+    ent = entropy(prob_dist, dim=dim)
     if reduction is None:
-        return entropy
-    return torch.mean(entropy)
+        return ent
+    elif reduction == 'mean':
+        return torch.mean(ent)
+    elif reduction == 'sum':
+        return torch.sum(ent)
 
-def get_uncertainties(ensemble, dim=0):
+def binary_entropy(tensor, eps=1e-7):
     """
-    Compute epistemic and aleatoric uncertainties across ensemble of classifiers.
+    Compute entropy of a binary tensor.
     """
-    epistemic = torch.mean(ensemble**2, dim=dim) - torch.mean(ensemble, dim=dim)**2
+    tensor = torch.clamp(tensor, eps, 1 - eps)
+    return -tensor * torch.log(tensor) - (1 - tensor) * torch.log(1 - tensor)
+
+def get_mutual_information_segm(outputs, mc_dim):
+    """
+    Compute mutual information between ensemble of binary segmentation
+    masks and ground truth mask.
+    """
+    prob_bar = outputs.mean(dim=mc_dim)
+    pred_entropy = binary_entropy(prob_bar)
+    expected_entropy = binary_entropy(outputs).mean(dim=mc_dim)
+    # epistemic uncertainty
+    epistemic = pred_entropy - expected_entropy
+    return epistemic
+
+def get_mutual_information_classif(outputs, mc_dim):
+    """
+    Compute mutual information between ensemble of classification
+    probabilities and target label.
+    """
+    prob_bar = outputs.mean(dim=mc_dim)     # (B, C)
+    pred_entropy = entropy(prob_bar)       # (B,)
+    expected_entropy = entropy(outputs).mean(dim=mc_dim) # (B,)
+    # epistemic uncertainty
+    epistemic = pred_entropy - expected_entropy
+    return epistemic
+
+def get_uncertainties(ensemble, dim=0, is_classif=False, use_mi=False):
+    """
+    Compute epistemic and aleatoric uncertainties across ensemble of 
+    classifiers or predictions.
+    """
+    if use_mi:
+        epistemic = get_mutual_information_classif(ensemble, mc_dim=dim) if is_classif else get_mutual_information_segm(ensemble, mc_dim=dim)
+    else:
+        epistemic = torch.mean(ensemble**2, dim=dim) - torch.mean(ensemble, dim=dim)**2
     aleatoric = torch.mean(ensemble*(1-ensemble), dim=dim)
     return epistemic, aleatoric
 
@@ -223,7 +270,7 @@ def ece(probs, targets):
 ######################
 # UTILITIES
 ######################
-def compute_metrics(metric_dict, model_type, probs, preds, pes, targets, save_results, \
+def compute_metrics(metric_dict, model_type, probs, preds, eus, targets, save_results, \
     roc_results_file, model_results_file):
     """
     Compute relevant metrics for model evaluation.
@@ -254,8 +301,8 @@ def compute_metrics(metric_dict, model_type, probs, preds, pes, targets, save_re
     metric_dict['Sens_M'] = get_binary_sensitivity(malignant_vs_rest, malignant_target)
     metric_dict['Sens_SK'] = get_binary_sensitivity(sebk_vs_rest, sebk_target)
 
-    # Average predictive entropy value
-    metric_dict['PE'] = torch.mean(pes).item()
+    # Average epistemic uncertainty value
+    metric_dict['EU'] = torch.mean(eus).item()
 
     # Generate .txt file with results for ROC curve plotting
     print()
