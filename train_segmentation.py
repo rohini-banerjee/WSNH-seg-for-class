@@ -110,7 +110,7 @@ def train(train_loader, val_loader, model, model_type, criterion, metric, optimi
 
         if early_stopping:
             es_handler(val_loss, epoch+1, model)
-            if es_handler.terminate:
+            if es_handler.is_terminated():
                 es_handler.save_best_model()
                 print(f"Early stopping at epoch: {epoch + 1}")
                 es_time = time.time()
@@ -154,6 +154,7 @@ def main(args):
     if str(device) == 'cuda':
         print('Setting CUDA Device Node')
     print(f"Running on {device}")
+    utils.print_line()
 
     # Load in training and validation dataloaders
     train_loader, val_loader = dataset.get_training_dataloaders(
@@ -165,8 +166,6 @@ def main(args):
         device=device,
         boot_seed=args.boot_seed,
     )
-
-    utils.print_line()
 
     # Create the model and define save path
     # If training MCU-Net, call "Segmenter", else call "UNetSegmenter"
@@ -246,6 +245,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parameters for segmentation training.')
 
+    # REQUIRED: specify model type
     parser.add_argument('model_type', type=str, choices=['unet', 'mcunet'], help='Model type for training.')
 
     # Image parameters

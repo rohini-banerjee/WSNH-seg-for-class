@@ -109,12 +109,15 @@ class EarlyStopping:
     Inspired by PyTorch Ignite handler for early stopping:
     https://pytorch.org/ignite/_modules/ignite/handlers/early_stopping.html#EarlyStopping.
     """
-    def __init__(self, save_pathname, patience=10, delta=0, model_num=None):
+    def __init__(self, save_pathname, metric='val_loss', patience=10, delta=0, model_num=None):
+        if metric not in ['val_loss', 'val_acc']:
+            raise ValueError(f"Invalid metric: {metric}. Valid options include 'val_loss' and 'val_acc'.")
         if patience < 1:
             raise ValueError("Argument patience should be positive integer.")
         if delta < 0.0:
             raise ValueError("Argument delta should not be a negative number.")
 
+        self.metric = metric
         self.patience = patience
         self.min_delta = delta
         self.best_score = None
@@ -126,8 +129,8 @@ class EarlyStopping:
         self.es_pathname = None
         self.model_num = model_num
 
-    def __call__(self, val_loss, epoch, model):
-        score = -val_loss
+    def __call__(self, metric_val, epoch, model):
+        score = -metric_val if self.metric == 'val_loss' else metric_val
 
         if self.best_score is None:
             self.best_score = score
@@ -136,7 +139,7 @@ class EarlyStopping:
             self.counter += 1
             if self.counter >= self.patience:
                 self.terminate = True
-                self.final_epoch = epoch-self.patience
+                self.final_epoch = epoch - self.patience
         else:
             self.best_score = score
             self.best_model_state = model.state_dict()
@@ -154,3 +157,9 @@ class EarlyStopping:
             new_fname = utils.WEIGHTS_DIR + f'ES{self.final_epoch}_' + fname_ext
         self.es_pathname = new_fname
         torch.save(self.best_model_state, self.es_pathname)
+
+    def is_terminated(self):
+        """
+        Check if early stopping has been triggered.
+        """
+        return self.terminate
